@@ -68,8 +68,6 @@ jobs:
               <remove-project name="platform/prebuilts/rust" />
               <remove-project name="platform/prebuilts/build-tools" />
               <project path="prebuilts/build-tools" name="platform/prebuilts/build-tools" clone-depth="1" groups="pdk" />
-              <project path="external/icu" name="TeamWin/external_icu" clone-depth="1" />
-              <project path="external/conscrypt" name="platform/external/conscrypt" clone-depth="1" />
           </manifest>
           EOF
           ln -sf ~/twrp/.repo/local_manifests/remove-large.xml ~/twrp/.repo/local_manifests/remove-large.xml 2>/dev/null || true
