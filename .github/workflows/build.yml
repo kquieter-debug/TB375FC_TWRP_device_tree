@@ -125,53 +125,53 @@ jobs:
           done
 
           cat > $CLANG_DIR/Android.bp << 'BP'
-// Auto-generated prebuilt libraries for Clang runtime. These are needed to satisfy build dependencies, but the actual contents are not used since the real libraries will be provided by the NDK or platform prebuilts at runtime. The source files are just empty archives to allow the build to succeed without needing the full Clang runtime prebuilts, which can be very large and are not necessary for building TWRP.
-package {
-    default_applicable_licenses: ["Android-Apache-2.0"],
-}
-
-toolchain_library {
-    name: "libunwind",
-    defaults: ["linux_bionic_supported"],
-    vendor_available: true,
-    vendor_ramdisk_available: true,
-    product_available: true,
-    recovery_available: true,
-    native_bridge_supported: true,
-    src: "",
-}
-
-toolchain_library {
-    name: "ndk_libunwind",
-    defaults: ["linux_bionic_supported"],
-    vendor_available: true,
-    vendor_ramdisk_available: true,
-    product_available: true,
-    recovery_available: true,
-    native_bridge_supported: true,
-    src: "",
-    apex_available: ["//apex_available:anyapex"],
-}
-
-cc_prebuilt_library_static {
-    name: "libclang_rt.ubsan_minimal-aarch64-android",
-    no_libcrt: true, nocrt: true, system_shared_libs: [], stl: "none",
-    srcs: ["lib64/clang/12.0.7/lib/linux/libclang_rt.ubsan_minimal-aarch64-android.a"],
-    check_elf_files: false, sanitize: { never: true },
-    recovery_available: true, vendor_available: true, product_available: true,
-    apex_available: ["//apex_available:anyapex"],
-}
-
-cc_prebuilt_library_static {
-    name: "libclang_rt.ubsan_minimal-arm-android",
-    no_libcrt: true, nocrt: true, system_shared_libs: [], stl: "none",
-    srcs: ["lib64/clang/12.0.7/lib/linux/libclang_rt.ubsan_minimal-arm-android.a"],
-    check_elf_files: false, sanitize: { never: true },
-    recovery_available: true, vendor_available: true, product_available: true,
-    apex_available: ["//apex_available:anyapex"],
-}
-BP
-
+          // Auto-generated prebuilt libraries for Clang runtime. These are needed to satisfy build dependencies, but the actual contents are not used since the real libraries will be provided by the NDK or platform prebuilts at runtime. The source files are just empty archives to allow the build to succeed without needing the full Clang runtime prebuilts, which can be very large and are not necessary for building TWRP.
+          package {
+              default_applicable_licenses: ["Android-Apache-2.0"],
+          }
+          
+          toolchain_library {
+              name: "libunwind",
+              defaults: ["linux_bionic_supported"],
+              vendor_available: true,
+              vendor_ramdisk_available: true,
+              product_available: true,
+              recovery_available: true,
+              native_bridge_supported: true,
+              src: "",
+          }
+          
+          toolchain_library {
+              name: "ndk_libunwind",
+              defaults: ["linux_bionic_supported"],
+              vendor_available: true,
+              vendor_ramdisk_available: true,
+              product_available: true,
+              recovery_available: true,
+              native_bridge_supported: true,
+              src: "",
+              apex_available: ["//apex_available:anyapex"],
+          }
+          
+          cc_prebuilt_library_static {
+              name: "libclang_rt.ubsan_minimal-aarch64-android",
+              no_libcrt: true, nocrt: true, system_shared_libs: [], stl: "none",
+              srcs: ["lib64/clang/12.0.7/lib/linux/libclang_rt.ubsan_minimal-aarch64-android.a"],
+              check_elf_files: false, sanitize: { never: true },
+              recovery_available: true, vendor_available: true, product_available: true,
+              apex_available: ["//apex_available:anyapex"],
+          }
+          
+          cc_prebuilt_library_static {
+              name: "libclang_rt.ubsan_minimal-arm-android",
+              no_libcrt: true, nocrt: true, system_shared_libs: [], stl: "none",
+              srcs: ["lib64/clang/12.0.7/lib/linux/libclang_rt.ubsan_minimal-arm-android.a"],
+              check_elf_files: false, sanitize: { never: true },
+              recovery_available: true, vendor_available: true, product_available: true,
+              apex_available: ["//apex_available:anyapex"],
+          }
+          BP
+          
       - name: Build TWRP (vendor_boot)
         run: |
           cd ~/twrp
