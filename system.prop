@@ -1,0 +1,39 @@
+# Dynamic Partitions
+ro.boot.dynamic_partitions=true
+
+# Fstab
+ro.postinstall.fstab.prefix=/system
+
+# USB MTP
+ro.sys.usb.storage.type=mtp
+
+# SoC
+ro.vendor.mediatek.platform=MT6897
+ro.board.platform=mt6897
+
+# Timezone
+persist.sys.timezone="Asia/Shanghai"
+
+# Crypto
+ro.crypto.volume.filenames_mode=aes-256-cts
+
+# Recovery USB
+ro.recovery.usb.vid=18D1
+ro.recovery.usb.adb.pid=D001
+ro.recovery.usb.fastboot.pid=4EE0
+
+# Virtual A/B
+ro.virtual_ab.enabled=true
+ro.virtual_ab.compression.enabled=true
+
+# Product info
+ro.product.board=mgvi_t_64_wifi_armv82
+ro.vendor.product.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi
+ro.sf.lcd_density=340
+
+# MinUI
+ro.minui.pixel_format=BGRA_8888
+
+# ART
+dalvik.vm.isa.arm64.variant=cortex-a55
+dalvik.vm.isa.arm.variant=cortex-a55
