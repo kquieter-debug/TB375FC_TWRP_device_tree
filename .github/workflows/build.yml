@@ -89,17 +89,17 @@ jobs:
           mkdir -p $CLANG_DIR/bin
           cd $CLANG_DIR/bin
           for tool in clang clang++; do
-            cat > $tool << 'WRAPPER'
+            cat > $tool << WRAPPER
           #!/bin/bash
           ARGS=()
-          for arg in "$@"; do
-            case "$arg" in
+          for arg in "\$@"; do
+            case "\$arg" in
               -fexperimental-new-pass-manager) ;;
               -enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang) ;;
-              *) ARGS+=("$arg") ;;
+              *) ARGS+=("\$arg") ;;
             esac
           done
-          exec /usr/bin/$tool "${ARGS[@]}"
+          exec /usr/bin/$tool "\${ARGS[@]}"
           WRAPPER
             chmod +x $tool
           done
