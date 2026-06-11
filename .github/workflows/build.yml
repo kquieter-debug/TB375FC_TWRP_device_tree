@@ -89,7 +89,19 @@ jobs:
           mkdir -p $CLANG_DIR/bin
           cd $CLANG_DIR/bin
           for tool in clang clang++; do
-            ln -sf /usr/bin/$tool $tool
+            cat > $tool << 'WRAPPER'
+          #!/bin/bash
+          ARGS=()
+          for arg in "$@"; do
+            case "$arg" in
+              -fexperimental-new-pass-manager) ;;
+              -enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang) ;;
+              *) ARGS+=("$arg") ;;
+            esac
+          done
+          exec /usr/bin/$tool "${ARGS[@]}"
+          WRAPPER
+            chmod +x $tool
           done
           for tool in llvm-ar llvm-as llvm-link llvm-nm llvm-objcopy llvm-readelf llvm-readobj llvm-strip; do
             ln -sf /usr/bin/$tool-18 $tool
@@ -114,7 +126,7 @@ jobs:
             libclang_rt.ubsan_standalone-aarch64-android.a; do
             ar crs $lib 2>/dev/null || touch $lib
           done
-          
+
           # Create stub libunwind.a (needed by init and other binaries)
           mkdir -p $CLANG_DIR/lib64
           ar crs $CLANG_DIR/lib64/libunwind.a 2>/dev/null || touch $CLANG_DIR/lib64/libunwind.a
@@ -150,7 +162,7 @@ jobs:
               recovery_available: true, vendor_available: true, product_available: true,
           }
           BP
-          
+
       - name: Build TWRP (vendor_boot)
         run: |
           cd ~/twrp
