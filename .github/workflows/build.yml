@@ -59,28 +59,26 @@ jobs:
       - name: Remove large prebuilt repos
         run: |
           mkdir -p ~/twrp/.repo/local_manifests
-          python3 -c "
-content = '''<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<manifest>
-    <remove-project name=\"platform/prebuilts/clang/host/linux-x86\" />
-    <remove-project name=\"platform/prebuilts/rust\" />
-    <remove-project name=\"platform/external/llvm\" />
-    <remove-project name=\"platform/prebuilts/sdk\" />
-    <remove-project name=\"platform/external/rust/crates/either\" />
-    <remove-project name=\"platform/external/rust/crates/env_logger\" />
-    <remove-project name=\"platform/external/rust/crates/fallible-streaming-iterator\" />
-    <remove-project name=\"platform/external/rust/crates/getrandom\" />
-    <remove-project name=\"platform/prebuilts/build-tools\" />
-    <remove-project name=\"platform/external/clang\" />
-    <remove-project name=\"platform/external/conscrypt\" />
-    <remove-project name=\"platform/external/icu\" />
-    <project path=\"prebuilts/build-tools\" name=\"platform/prebuilts/build-tools\" clone-depth=\"1\" groups=\"pdk\" />
-    <project path=\"external/icu\" name=\"TeamWin/external_icu\" clone-depth=\"1\" />
-    <project path=\"external/conscrypt\" name=\"platform/external/conscrypt\" clone-depth=\"1\" />
-</manifest>'''
-with open('/root/twrp/.repo/local_manifests/remove-large.xml', 'w') as f:
-    f.write(content)
-"
+          cat > ~/twrp/.repo/local_manifests/remove-large.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+              <remove-project name="platform/prebuilts/clang/host/linux-x86" />
+              <remove-project name="platform/prebuilts/rust" />
+              <remove-project name="platform/external/llvm" />
+              <remove-project name="platform/prebuilts/sdk" />
+              <remove-project name="platform/external/rust/crates/either" />
+              <remove-project name="platform/external/rust/crates/env_logger" />
+              <remove-project name="platform/external/rust/crates/fallible-streaming-iterator" />
+              <remove-project name="platform/external/rust/crates/getrandom" />
+              <remove-project name="platform/prebuilts/build-tools" />
+              <remove-project name="platform/external/clang" />
+              <remove-project name="platform/external/conscrypt" />
+              <remove-project name="platform/external/icu" />
+              <project path="prebuilts/build-tools" name="platform/prebuilts/build-tools" clone-depth="1" groups="pdk" />
+              <project path="external/icu" name="TeamWin/external_icu" clone-depth="1" />
+              <project path="external/conscrypt" name="platform/external/conscrypt" clone-depth="1" />
+          </manifest>
+          EOF
           ln -sf ~/twrp/.repo/local_manifests/remove-large.xml ~/twrp/.repo/local_manifests/remove-large.xml 2>/dev/null || true
 
       - name: Sync TWRP source
