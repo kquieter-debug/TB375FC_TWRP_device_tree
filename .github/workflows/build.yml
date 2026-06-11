@@ -1,0 +1,190 @@
+name: Build TWRP for Lenovo TB375FC
+
+on:
+  push:
+    branches: [ '**' ]
+  workflow_dispatch:
+
+env:
+  DEVICE_PATH: device/lenovo/tb375fc
+  TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
+  TWRP_BRANCH: twrp-12.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout device tree
+        uses: actions/checkout@v4
+        with:
+          path: device_tree
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            git-core gnupg flex bison build-essential zip curl zlib1g-dev \
+            gcc-multilib g++-multilib libc6-dev-i386 libncurses5 libncurses5-dev \
+            x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils \
+            xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip \
+            lld-18
+          sudo ln -sf /usr/bin/llvm-ar-18 /usr/bin/llvm-ar
+          sudo ln -sf /usr/bin/llvm-objcopy-18 /usr/bin/llvm-objcopy
+          sudo ln -sf /usr/bin/llvm-readelf-18 /usr/bin/llvm-readelf
+          sudo ln -sf /usr/bin/llvm-readobj-18 /usr/bin/llvm-readobj
+          sudo ln -sf /usr/bin/ld.lld-18 /usr/bin/ld.lld
+          sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+          pip3 install --quiet pyelftools
+
+      - name: Install repo tool
+        run: |
+          mkdir -p ~/bin
+          curl -sSL 'https://storage.googleapis.com/git-repo-downloads/repo' > ~/bin/repo
+          chmod +x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Configure git
+        run: |
+          git config --global user.name "TWRP Builder"
+          git config --global user.email "builder@github.com"
+          git config --global http.postBuffer 524288000
+          git config --global pack.windowMemory "512m"
+
+      - name: Init TWRP source repo
+        run: |
+          mkdir -p ~/twrp
+          cd ~/twrp
+          repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
+
+      - name: Remove large prebuilt repos
+        run: |
+          mkdir -p ~/twrp/.repo/local_manifests
+          cat > ~/twrp/.repo/local_manifests/remove-large.xml << 'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <remove-project name="platform/prebuilts/clang/host/linux-x86" />
+    <remove-project name="platform/prebuilts/rust" />
+    <remove-project name="platform/external/llvm" />
+    <remove-project name="platform/prebuilts/sdk" />
+    <remove-project name="platform/external/rust/crates/either" />
+    <remove-project name="platform/external/rust/crates/env_logger" />
+    <remove-project name="platform/external/rust/crates/fallible-streaming-iterator" />
+    <remove-project name="platform/external/rust/crates/getrandom" />
+    <remove-project name="platform/prebuilts/build-tools" />
+    <remove-project name="platform/external/clang" />
+    <remove-project name="platform/external/conscrypt" />
+    <remove-project name="platform/external/icu" />
+    <project path="prebuilts/build-tools" name="platform/prebuilts/build-tools" clone-depth="1" groups="pdk" />
+    <project path="external/icu" name="TeamWin/external_icu" clone-depth="1" />
+    <project path="external/conscrypt" name="platform/external/conscrypt" clone-depth="1" />
+</manifest>
+XML
+
+      - name: Sync TWRP source
+        run: |
+          cd ~/twrp
+          repo sync --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j2 2>&1
+
+      - name: Copy device tree
+        run: |
+          mkdir -p ~/twrp/$DEVICE_PATH
+          cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
+          rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
+
+      - name: Create Clang prebuilt stubs
+        run: |
+          CLANG_DIR=~/twrp/prebuilts/clang/host/linux-x86/clang-r416183b1
+          mkdir -p $CLANG_DIR/bin
+          cd $CLANG_DIR/bin
+          for tool in clang clang++; do
+            ln -sf /usr/bin/$tool $tool
+          done
+          for tool in llvm-ar llvm-as llvm-link llvm-nm llvm-objcopy llvm-readelf llvm-readobj llvm-strip; do
+            ln -sf /usr/bin/$tool-18 $tool
+          done
+          ln -sf /usr/bin/ld.lld $CLANG_DIR/bin/lld
+          echo '#!/bin/bash' > $CLANG_DIR/bin/clang-tidy
+          echo 'exit 0' >> $CLANG_DIR/bin/clang-tidy
+          chmod +x $CLANG_DIR/bin/clang-tidy
+
+          # Create sanitizer runtime lib stubs
+          SAN_DIR=$CLANG_DIR/lib64/clang/12.0.7/lib/linux
+          mkdir -p $SAN_DIR
+          cd $SAN_DIR
+          for lib in \
+            libclang_rt.builtins-arm-android.a \
+            libclang_rt.builtins-aarch64-android.a \
+            libclang_rt.builtins-i686-android.a \
+            libclang_rt.builtins-x86_64-android.a \
+            libclang_rt.ubsan_minimal-aarch64-android.a \
+            libclang_rt.ubsan_minimal-arm-android.a \
+            libclang_rt.ubsan_minimal-i686-android.a \
+            libclang_rt.ubsan_minimal-x86_64-android.a \
+            libclang_rt.ubsan_standalone-aarch64-android.a; do
+            ar crs $lib 2>/dev/null || touch $lib
+          done
+
+          # Create Android.bp for missing prebuilt modules
+          cat > ~/twrp/prebuilts/clang/host/linux-x86/clang-r416183b1/Android.bp << 'BP'
+// Auto-generated prebuilt libraries for Clang runtime
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+toolchain_library {
+    name: "libunwind",
+    defaults: ["linux_bionic_supported"],
+    vendor_available: true,
+    vendor_ramdisk_available: true,
+    product_available: true,
+    recovery_available: true,
+    native_bridge_supported: true,
+    src: "",
+}
+
+toolchain_library {
+    name: "ndk_libunwind",
+    defaults: ["linux_bionic_supported"],
+    vendor_available: true,
+    vendor_ramdisk_available: true,
+    product_available: true,
+    recovery_available: true,
+    native_bridge_supported: true,
+    src: "",
+    apex_available: ["//apex_available:anyapex"],
+}
+
+cc_prebuilt_library_static {
+    name: "libclang_rt.ubsan_minimal-aarch64-android",
+    no_libcrt: true, nocrt: true, system_shared_libs: [], stl: "none",
+    srcs: ["lib64/clang/12.0.7/lib/linux/libclang_rt.ubsan_minimal-aarch64-android.a"],
+    check_elf_files: false, sanitize: { never: true },
+    recovery_available: true, vendor_available: true, product_available: true,
+    apex_available: ["//apex_available:anyapex"],
+}
+
+cc_prebuilt_library_static {
+    name: "libclang_rt.ubsan_minimal-arm-android",
+    no_libcrt: true, nocrt: true, system_shared_libs: [], stl: "none",
+    srcs: ["lib64/clang/12.0.7/lib/linux/libclang_rt.ubsan_minimal-arm-android.a"],
+    check_elf_files: false, sanitize: { never: true },
+    recovery_available: true, vendor_available: true, product_available: true,
+    apex_available: ["//apex_available:anyapex"],
+}
+BP
+
+      - name: Build TWRP (vendor_boot)
+        run: |
+          cd ~/twrp
+          source build/envsetup.sh
+          lunch twrp_tb375fc-eng
+          mka vendorbootimage -j2 2>&1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: twrp-tb375fc
+          path: |
+            ~/twrp/out/target/product/tb375fc/vendor_boot.img
+            ~/twrp/out/target/product/tb375fc/recovery.img
+          if-no-files-found: warn
