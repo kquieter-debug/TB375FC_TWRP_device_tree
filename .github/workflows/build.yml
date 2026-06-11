@@ -59,26 +59,29 @@ jobs:
       - name: Remove large prebuilt repos
         run: |
           mkdir -p ~/twrp/.repo/local_manifests
-          cat > ~/twrp/.repo/local_manifests/remove-large.xml << 'XML'
-<?xml version="1.0" encoding="UTF-8"?>
+          python3 -c "
+content = '''<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <manifest>
-    <remove-project name="platform/prebuilts/clang/host/linux-x86" />
-    <remove-project name="platform/prebuilts/rust" />
-    <remove-project name="platform/external/llvm" />
-    <remove-project name="platform/prebuilts/sdk" />
-    <remove-project name="platform/external/rust/crates/either" />
-    <remove-project name="platform/external/rust/crates/env_logger" />
-    <remove-project name="platform/external/rust/crates/fallible-streaming-iterator" />
-    <remove-project name="platform/external/rust/crates/getrandom" />
-    <remove-project name="platform/prebuilts/build-tools" />
-    <remove-project name="platform/external/clang" />
-    <remove-project name="platform/external/conscrypt" />
-    <remove-project name="platform/external/icu" />
-    <project path="prebuilts/build-tools" name="platform/prebuilts/build-tools" clone-depth="1" groups="pdk" />
-    <project path="external/icu" name="TeamWin/external_icu" clone-depth="1" />
-    <project path="external/conscrypt" name="platform/external/conscrypt" clone-depth="1" />
-</manifest>
-XML
+    <remove-project name=\"platform/prebuilts/clang/host/linux-x86\" />
+    <remove-project name=\"platform/prebuilts/rust\" />
+    <remove-project name=\"platform/external/llvm\" />
+    <remove-project name=\"platform/prebuilts/sdk\" />
+    <remove-project name=\"platform/external/rust/crates/either\" />
+    <remove-project name=\"platform/external/rust/crates/env_logger\" />
+    <remove-project name=\"platform/external/rust/crates/fallible-streaming-iterator\" />
+    <remove-project name=\"platform/external/rust/crates/getrandom\" />
+    <remove-project name=\"platform/prebuilts/build-tools\" />
+    <remove-project name=\"platform/external/clang\" />
+    <remove-project name=\"platform/external/conscrypt\" />
+    <remove-project name=\"platform/external/icu\" />
+    <project path=\"prebuilts/build-tools\" name=\"platform/prebuilts/build-tools\" clone-depth=\"1\" groups=\"pdk\" />
+    <project path=\"external/icu\" name=\"TeamWin/external_icu\" clone-depth=\"1\" />
+    <project path=\"external/conscrypt\" name=\"platform/external/conscrypt\" clone-depth=\"1\" />
+</manifest>'''
+with open('/root/twrp/.repo/local_manifests/remove-large.xml', 'w') as f:
+    f.write(content)
+"
+          ln -sf ~/twrp/.repo/local_manifests/remove-large.xml ~/twrp/.repo/local_manifests/remove-large.xml 2>/dev/null || true
 
       - name: Sync TWRP source
         run: |
@@ -107,7 +110,6 @@ XML
           echo 'exit 0' >> $CLANG_DIR/bin/clang-tidy
           chmod +x $CLANG_DIR/bin/clang-tidy
 
-          # Create sanitizer runtime lib stubs
           SAN_DIR=$CLANG_DIR/lib64/clang/12.0.7/lib/linux
           mkdir -p $SAN_DIR
           cd $SAN_DIR
@@ -124,8 +126,7 @@ XML
             ar crs $lib 2>/dev/null || touch $lib
           done
 
-          # Create Android.bp for missing prebuilt modules
-          cat > ~/twrp/prebuilts/clang/host/linux-x86/clang-r416183b1/Android.bp << 'BP'
+          cat > $CLANG_DIR/Android.bp << 'BP'
 // Auto-generated prebuilt libraries for Clang runtime
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
