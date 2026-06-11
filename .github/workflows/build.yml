@@ -125,7 +125,7 @@ jobs:
           done
 
           cat > $CLANG_DIR/Android.bp << 'BP'
-// Auto-generated prebuilt libraries for Clang runtime
+// Auto-generated prebuilt libraries for Clang runtime. These are needed to satisfy build dependencies, but the actual contents are not used since the real libraries will be provided by the NDK or platform prebuilts at runtime. The source files are just empty archives to allow the build to succeed without needing the full Clang runtime prebuilts, which can be very large and are not necessary for building TWRP.
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
