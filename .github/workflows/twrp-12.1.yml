@@ -1,4 +1,4 @@
-name: Build TWRP for Lenovo TB375FC
+name: Build TWRP-12.1
 
 on:
 #  push:
