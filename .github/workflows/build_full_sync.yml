@@ -8,8 +8,7 @@ on:
 env:
   DEVICE_PATH: device/lenovo/tb375fc
   TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
-  TWRP_BRANCH: twrp-12.1
-
+  TWRP_BRANCH: twrp-14
 jobs:
   build:
     runs-on: ubuntu-latest

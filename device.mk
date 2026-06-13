@@ -16,7 +16,7 @@ AB_OTA_POSTINSTALL_CONFIG +=     RUN_POSTINSTALL_system=true     POSTINSTALL_PAT
 
 PRODUCT_PACKAGES +=     android.hardware.boot@1.2-mtkimpl     android.hardware.boot@1.2-mtkimpl.recovery     bootctrl.mt6897.recovery
 
-PRODUCT_PACKAGES +=     android.hardware.boot@1.2-     android.hardware.boot@1.2-impl.recovery     android.hardware.boot@1.2-service    
+PRODUCT_PACKAGES +=     android.hardware.boot@1.2-impl     android.hardware.boot@1.2-impl.recovery     android.hardware.boot@1.2-service    
 
 PRODUCT_PACKAGES :=     bootctrl.mt6897     libgptutils     libz     libcutils 
 PRODUCT_PACKAGES +=     otapreopt_script     cppreopts.sh     update_engine     update_verifier     update_engine_sideload     checkpoint_gc
