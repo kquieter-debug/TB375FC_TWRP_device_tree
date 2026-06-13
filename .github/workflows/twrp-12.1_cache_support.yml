@@ -1,0 +1,112 @@
+name: Build TWRP-12.1
+
+on:
+#  push:
+#    branches: [ '**' ]
+  workflow_dispatch:
+
+env:
+  DEVICE_PATH: device/lenovo/tb375fc
+  TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
+  TWRP_BRANCH: twrp-12.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查设备树
+        uses: actions/checkout@v4
+        with:
+          path: device_tree
+
+      - name: 安装编译依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            git-core gnupg flex bison build-essential zip curl zlib1g-dev \
+            gcc-multilib g++-multilib libc6-dev-i386 libncurses6 libncurses-dev \
+            x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils \
+            xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip \
+            lld-18
+
+      - name: 安装 repo
+        run: |
+          mkdir -p ~/bin
+          curl -sSL 'https://storage.googleapis.com/git-repo-downloads/repo' > ~/bin/repo
+          chmod +x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: 注册 git
+        run: |
+          git config --global user.name "Muffin_Joe"
+          git config --global user.email "builder@github.com"
+          git config --global http.postBuffer 524288000
+          git config --global pack.windowMemory "512m"
+
+      # ------------------------------------------------------------
+      # 缓存 .repo 目录（包含所有 git 对象和 manifest 状态）
+      # ------------------------------------------------------------
+
+      - name: 缓存 repo 文件夹
+        uses: actions/cache@v4
+        id: cache-repo
+        with:
+          path: ~/twrp/.repo
+          key: twrp-repo-${{ env.TWRP_MANIFEST }}-${{ env.TWRP_BRANCH }}-${{ hashFiles('device_tree/**') }}
+          restore-keys: |
+            twrp-repo-${{ env.TWRP_MANIFEST }}-${{ env.TWRP_BRANCH }}-
+            twrp-repo-${{ env.TWRP_MANIFEST }}-
+            twrp-repo-
+
+      - name: 初始化 twrp 源码地址
+        if: steps.cache-repo.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/twrp
+          cd ~/twrp
+          repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
+
+      - name: 同步 twrp 源码
+        run: |
+          cd ~/twrp
+          # 如果 .repo 已存在但未 init（缓存命中但未完整 init），仍然确保 init 存在
+          if [ ! -d ".repo/manifests" ]; then
+            repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
+          fi
+          repo sync --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j4 2>&1
+
+      - name: 复制设备树源码0
+        run: |
+          mkdir -p ~/twrp/$DEVICE_PATH
+          cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
+          rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
+
+      # ------------------------------------------------------------
+      # 缓存 out 目录（编译输出，避免重复编译）
+      # ------------------------------------------------------------
+
+      - name: 缓存编译输出目录
+        uses: actions/cache@v4
+        id: cache-out
+        with:
+          path: ~/twrp/out
+          key: twrp-out-${{ env.TWRP_MANIFEST }}-${{ env.TWRP_BRANCH }}-${{ hashFiles('device_tree/**') }}
+          restore-keys: |
+            twrp-out-${{ env.TWRP_MANIFEST }}-${{ env.TWRP_BRANCH }}-
+            twrp-out-${{ env.TWRP_MANIFEST }}-
+            twrp-out-
+
+      - name: 开始构建，目标文件为 vendor_boot
+        run: |
+          cd ~/twrp
+          source build/envsetup.sh
+          lunch twrp_tb375fc-eng
+          mka vendorbootimage -j2 2>&1
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: twrp-tb375fc
+          path: |
+            ~/twrp/out/target/product/tb375fc/vendor_boot.img
+            ~/twrp/out/target/product/tb375fc/recovery.img
+          if-no-files-found: warn

@@ -71,7 +71,7 @@ BOARD_SUPER_PARTITION_SIZE := 9126805504
 
 BOARD_SUPER_PARTITION_GROUPS := main
 BOARD_MAIN_SIZE := 9122611200
-BOARD_MAIN_PARTITION_LIST := odm odm_dlkm product system system_ext vendor vendor_dlkm
+BOARD_MAIN_PARTITION_LIST := odm odm_dlkm product system system_dlkm system_ext vendor vendor_dlkm
 
 BOARD_PARTITION_LIST := $(call to-upper, $(BOARD_MAIN_PARTITION_LIST))
 $(foreach p, $(BOARD_PARTITION_LIST), $(eval BOARD_$(p)IMAGE_FILE_SYSTEM_TYPE := erofs))
