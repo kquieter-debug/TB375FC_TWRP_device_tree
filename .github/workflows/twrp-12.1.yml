@@ -1,0 +1,76 @@
+name: Build TWRP for Lenovo TB375FC
+
+on:
+#  push:
+#    branches: [ '**' ]
+  workflow_dispatch:
+
+env:
+  DEVICE_PATH: device/lenovo/tb375fc
+  TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
+  TWRP_BRANCH: twrp-12.1
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout device tree
+        uses: actions/checkout@v4
+        with:
+          path: device_tree
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            git-core gnupg flex bison build-essential zip curl zlib1g-dev \
+            gcc-multilib g++-multilib libc6-dev-i386 libncurses6 libncurses-dev \
+            x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils \
+            xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip \
+            lld-18
+
+      - name: Install repo tool
+        run: |
+          mkdir -p ~/bin
+          curl -sSL 'https://storage.googleapis.com/git-repo-downloads/repo' > ~/bin/repo
+          chmod +x ~/bin/repo
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Configure git
+        run: |
+          git config --global user.name "Muffin_Joe"
+          git config --global user.email "builder@github.com"
+          git config --global http.postBuffer 524288000
+          git config --global pack.windowMemory "512m"
+
+      - name: Init TWRP source repo
+        run: |
+          mkdir -p ~/twrp
+          cd ~/twrp
+          repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
+
+      - name: Sync TWRP source
+        run: |
+          cd ~/twrp
+          repo sync --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j4 2>&1
+
+      - name: Copy device tree
+        run: |
+          mkdir -p ~/twrp/$DEVICE_PATH
+          cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
+          rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
+
+      - name: Build TWRP (vendor_boot)
+        run: |
+          cd ~/twrp
+          source build/envsetup.sh
+          lunch twrp_tb375fc-eng
+          mka vendorbootimage -j2 2>&1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: twrp-tb375fc
+          path: |
+            ~/twrp/out/target/product/tb375fc/vendor_boot.img
+            ~/twrp/out/target/product/tb375fc/recovery.img
+          if-no-files-found: warn

@@ -1,4 +1,4 @@
-﻿name: Diagnose TWRP-14 Build Issue (v2)
+﻿name: Diagnose TWRP-14 Build Issue (v3)
 on:
   workflow_dispatch:
 
@@ -40,31 +40,17 @@ jobs:
           cd ~/twrp
           repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
 
-      - name: Show manifest remotes
+      - name: Show full manifest content
         run: |
           cd ~/twrp
-          echo "=== Manifest XML (remotes section) ==="
-          grep -A1 '<remote' .repo/manifest.xml | head -40
+          echo "=== .repo/manifest.xml ==="
+          cat .repo/manifest.xml
           echo ""
-          echo "=== All project paths ==="
-          grep '<project' .repo/manifest.xml | head -30
-
-      - name: Add missing build/release repo
-        run: |
-          cd ~/twrp
-          REMOTE=$(grep -oP '(?<=<remote.*name=")[^"]+' .repo/manifest.xml | head -1)
-          AOSP_REMOTE=$(grep -oP '(?<=fetch=")[^"]*android[^"]*' .repo/manifest.xml | head -1)
-          echo "Primary remote name: $REMOTE"
-          echo "AOSP fetch URL hint: $AOSP_REMOTE"
-          mkdir -p .repo/local_manifests
-          # Try to use the correct remote format
-          cat > .repo/local_manifests/build_release.xml << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <manifest>
-          </manifest>
-          EOF
-          echo "=== local_manifests ==="
-          ls -la .repo/local_manifests/
+          echo "=== .repo/manifests/ ==="
+          ls -la .repo/manifests/ 2>/dev/null
+          echo ""
+          echo "=== default.xml ==="
+          cat .repo/manifests/default.xml 2>/dev/null
 
       - name: Sync TWRP source
         run: |
@@ -77,10 +63,21 @@ jobs:
           cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
           rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
 
-      - name: Try lunch
+      - name: Try direct fix - add build/release
         run: |
           cd ~/twrp
-          source build/envsetup.sh 2>&1 || true
+          # Check the default manifest for remote info
+          echo "=== Remote info ==="
+          grep -r 'remote' .repo/manifests/ .repo/manifest.xml 2>/dev/null | head -20
           echo ""
-          echo "=== lunch twrp_tb375fc-eng ==="
-          lunch twrp_tb375fc-eng 2>&1 || true
+          echo "=== Fetch URL info ==="
+          grep -r 'fetch' .repo/manifests/ .repo/manifest.xml 2>/dev/null | head -20
+          echo ""
+          # Try to find the AOSP remote
+          AOSP_FETCH=$(grep -ro 'fetch="[^"]*android[^"]*"' .repo/manifests/ .repo/manifest.xml 2>/dev/null | head -1)
+          AOSP_NAME=$(grep -B1 "$AOSP_FETCH" .repo/manifests/default.xml 2>/dev/null | grep 'name=' | grep -oP 'name="\K[^"]+')
+          echo "AOSP fetch: $AOSP_FETCH"
+          echo "AOSP remote name: $AOSP_NAME"
+          echo ""
+          echo "=== First remote in default.xml ==="
+          grep '<remote' .repo/manifests/default.xml 2>/dev/null
