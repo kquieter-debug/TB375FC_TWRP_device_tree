@@ -1,4 +1,4 @@
-name: Build TWRP14
+﻿name: Build TWRP14
 on:
   workflow_dispatch:
 
@@ -7,7 +7,6 @@ env:
   TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
   TWRP_BRANCH: twrp-14
   CCACHE_DIR: /home/runner/.ccache
-  CCACHE_EXEC: /usr/bin/ccache
   USE_CCACHE: 1
   CCACHE_COMPRESS: 1
   CCACHE_MAXSIZE: 5G
@@ -45,8 +44,7 @@ jobs:
         with:
           path: /home/runner/.ccache
           key: ccache-twrp14-${{ github.run_id }}
-          restore-keys: |
-            ccache-twrp14-
+          restore-keys: ccache-twrp14-
 
       - name: Init TWRP source
         run: |
@@ -54,46 +52,43 @@ jobs:
           cd ~/twrp
           repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
 
-      - name: Add missing build/release repo
+      - name: Remove large prebuilts & add build/release
         run: |
           cd ~/twrp
-          mkdir -p .repo/local_manifests
-          cat > .repo/local_manifests/remove_large.xml << 'REMOVEEOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <manifest>
-              <remove-project name="platform/prebuilts/abi-dumps/vndk" />
-              <remove-project name="platform/prebuilts/clang/host/linux-x86" />
-              <remove-project name="platform/prebuilts/gcc" />
-              <remove-project name="platform/prebuilts/go" />
-              <remove-project name="platform/prebuilts/gradle-plugin" />
-              <remove-project name="platform/prebuilts/jdk/jdk11" />
-              <remove-project name="platform/prebuilts/jdk/jdk17" />
-              <remove-project name="platform/prebuilts/jdk/jdk8" />
-              <remove-project name="platform/prebuilts/misc" />
-              <remove-project name="platform/prebuilts/module_sdk" />
-              <remove-project name="platform/prebuilts/rust" />
-              <remove-project name="platform/prebuilts/sdk" />
-              <remove-project name="platform/prebuilts/tools" />
-          </manifest>
-          REMOVEEOF
-          cat > .repo/local_manifests/build_release.xml << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <manifest>
-            <remote name="aosp_remote" fetch="https://android.googlesource.com" />
-            <project path="build/release" name="platform/build/release" remote="aosp_remote" revision="refs/tags/android-14.0.0_r67" clone-depth="1" />
-          </manifest>
-          EOF
+          # Step 1: Remove large prebuilts from manifest via Python
+          python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET, os
+          mp = '.repo/manifest.xml'
+          if os.path.islink(mp): mp = os.path.realpath(mp)
+          tree = ET.parse(mp); root = tree.getroot()
+          prefixes = [
+            'platform/prebuilts/gcc/', 'platform/prebuilts/go/',
+            'platform/prebuilts/gradle-plugin', 'platform/prebuilts/jdk/',
+            'platform/prebuilts/misc', 'platform/prebuilts/module_sdk/',
+            'platform/prebuilts/rust', 'platform/prebuilts/sdk',
+            'platform/prebuilts/tools', 'platform/prebuilts/abi-dumps/',
+            'platform/prebuilts/clang/host/linux-x86',
+            'platform/prebuilts/build-tools',
+          ]
+          removed = []
+          for proj in list(root.findall('project')):
+            name = proj.get('name', '')
+            if any(name.startswith(p) for p in prefixes):
+              root.remove(proj); removed.append(name)
+          print(f'Removed {len(removed)} large prebuilt projects')
+          tree.write(mp, xml_declaration=True, encoding='UTF-8')
+          PYEOF
 
-      - name: Cache repo sync
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/twrp/.repo
-            !~/twrp/.repo/projects
-            !~/twrp/.repo/manifests
-          key: repo-twrp14-${{ hashFiles('~/twrp/.repo/manifest.xml') }}
-          restore-keys: |
-            repo-twrp14-
+          # Step 2: Add build/release via local manifest
+          mkdir -p .repo/local_manifests
+          cat > .repo/local_manifests/build_release.xml << 'XMLEND'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remote name="aosp_fetch" fetch="https://android.googlesource.com" />
+            <project path="build/release" name="platform/build/release" remote="aosp_fetch" revision="refs/tags/android-14.0.0_r67" clone-depth="1" />
+          </manifest>
+          XMLEND
+          echo "build_release local manifest added"
 
       - name: Sync TWRP source
         run: |
@@ -125,5 +120,3 @@ jobs:
             ~/twrp/out/target/product/tb375fc/vendor_boot.img
             ~/twrp/out/target/product/tb375fc/recovery.img
           if-no-files-found: warn
-
-
