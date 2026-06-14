@@ -1,5 +1,8 @@
 # TWRP Device Tree for Lenovo Xiaoxin Pad Pro 12.7 2025 (TB375FC)
 
+# WARNING ! The compiled product does NOT works as I supposed !
+# Still trying to fix it before i push it to release!
+
 ## Device specifications
 
 | Basic       | Spec Sheet                                                |

@@ -58,6 +58,24 @@ jobs:
         run: |
           cd ~/twrp
           mkdir -p .repo/local_manifests
+          cat > .repo/local_manifests/remove_large.xml << 'REMOVEEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+              <remove-project name="platform/prebuilts/abi-dumps/vndk" />
+              <remove-project name="platform/prebuilts/clang/host/linux-x86" />
+              <remove-project name="platform/prebuilts/gcc" />
+              <remove-project name="platform/prebuilts/go" />
+              <remove-project name="platform/prebuilts/gradle-plugin" />
+              <remove-project name="platform/prebuilts/jdk/jdk11" />
+              <remove-project name="platform/prebuilts/jdk/jdk17" />
+              <remove-project name="platform/prebuilts/jdk/jdk8" />
+              <remove-project name="platform/prebuilts/misc" />
+              <remove-project name="platform/prebuilts/module_sdk" />
+              <remove-project name="platform/prebuilts/rust" />
+              <remove-project name="platform/prebuilts/sdk" />
+              <remove-project name="platform/prebuilts/tools" />
+          </manifest>
+          REMOVEEOF
           cat > .repo/local_manifests/build_release.xml << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
@@ -107,4 +125,5 @@ jobs:
             ~/twrp/out/target/product/tb375fc/vendor_boot.img
             ~/twrp/out/target/product/tb375fc/recovery.img
           if-no-files-found: warn
+
 
