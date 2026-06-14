@@ -6,6 +6,11 @@ env:
   DEVICE_PATH: device/lenovo/tb375fc
   TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
   TWRP_BRANCH: twrp-14
+  CCACHE_DIR: /home/runner/.ccache
+  CCACHE_EXEC: /usr/bin/ccache
+  USE_CCACHE: 1
+  CCACHE_COMPRESS: 1
+  CCACHE_MAXSIZE: 5G
 
 jobs:
   build:
@@ -19,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 libncurses6 libncurses-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip lld-18
+          sudo apt-get install -y -qq git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 libncurses6 libncurses-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip ccache lld-18
 
       - name: Install repo tool
         run: |
@@ -34,6 +39,14 @@ jobs:
           git config --global user.email "builder@github.com"
           git config --global http.postBuffer 524288000
           git config --global pack.windowMemory "512m"
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.ccache
+          key: ccache-twrp14-${{ github.run_id }}
+          restore-keys: |
+            ccache-twrp14-
 
       - name: Init TWRP source
         run: |
@@ -53,6 +66,17 @@ jobs:
           </manifest>
           EOF
 
+      - name: Cache repo sync
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/twrp/.repo
+            !~/twrp/.repo/projects
+            !~/twrp/.repo/manifests
+          key: repo-twrp14-${{ hashFiles('~/twrp/.repo/manifest.xml') }}
+          restore-keys: |
+            repo-twrp14-
+
       - name: Sync TWRP source
         run: |
           cd ~/twrp
@@ -64,26 +88,15 @@ jobs:
           cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
           rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
 
-      - name: Check available releases
-        run: |
-          cd ~/twrp
-          echo "=== build/release dirs ==="
-          ls -d build/release/*/ 2>/dev/null | head -20
-          echo ""
-          echo "=== Available releases ==="
-          ls build/release/ 2>/dev/null
-
       - name: Build TWRP
         run: |
+          export CCACHE_DIR=/home/runner/.ccache
+          export USE_CCACHE=1
+          export CCACHE_COMPRESS=1
+          ccache -M 5G
           cd ~/twrp
           source build/envsetup.sh
-          # Try 3-part lunch format with ap3a first
-          echo "=== Trying lunch twrp_tb375fc-ap3a-eng ==="
-          lunch twrp_tb375fc-ap3a-eng 2>&1 && echo "SUCCESS" || echo "FAILED"
-          if [ $? -ne 0 ]; then
-            echo "=== Trying lunch twrp_tb375fc-ap1a-eng ==="
-            lunch twrp_tb375fc-ap1a-eng 2>&1
-          fi
+          lunch twrp_tb375fc-eng
           mka vendorbootimage -j2 2>&1
 
       - name: Upload artifacts
