@@ -1,14 +1,12 @@
-name: Build TWRP14
-
+﻿name: Build TWRP14
 on:
-#  push:
-#    branches: [ '**' ]
   workflow_dispatch:
 
 env:
   DEVICE_PATH: device/lenovo/tb375fc
   TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
   TWRP_BRANCH: twrp-14
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,19 +19,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            git-core gnupg flex bison build-essential zip curl zlib1g-dev \
-            gcc-multilib g++-multilib libc6-dev-i386 libncurses6 libncurses-dev \
-            x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils \
-            xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip \
-            lld-18
+          sudo apt-get install -y -qq git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 libncurses6 libncurses-dev x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig lz4 libssl-dev python3 python3-pip lld-18
 
       - name: Install repo tool
         run: |
           mkdir -p ~/bin
           curl -sSL 'https://storage.googleapis.com/git-repo-downloads/repo' > ~/bin/repo
           chmod +x ~/bin/repo
-          echo "$HOME/bin" >> $GITHUB_PATH
+          echo ~/bin >> $GITHUB_PATH
 
       - name: Configure git
         run: |
@@ -42,11 +35,25 @@ jobs:
           git config --global http.postBuffer 524288000
           git config --global pack.windowMemory "512m"
 
-      - name: Init TWRP source repo
+      - name: Init TWRP source
         run: |
           mkdir -p ~/twrp
           cd ~/twrp
           repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
+
+      - name: Add missing build/release repo
+        run: |
+          cd ~/twrp
+          mkdir -p .repo/local_manifests
+          cat > .repo/local_manifests/build_release.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <remote name="aosp_remote" fetch="https://android.googlesource.com" />
+            <project path="build/release" name="platform/build/release" remote="aosp_remote" revision="refs/tags/android-14.0.0_r67" clone-depth="1" />
+          </manifest>
+          EOF
+          echo "Local manifest added:"
+          cat .repo/local_manifests/build_release.xml
 
       - name: Sync TWRP source
         run: |
@@ -59,7 +66,15 @@ jobs:
           cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
           rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
 
-      - name: Build TWRP (vendor_boot)
+      - name: Verify build/release
+        run: |
+          echo "=== build/release ==="
+          ls -la ~/twrp/build/release/ | head -10
+          echo ""
+          echo "=== release config mk files ==="
+          ls ~/twrp/build/release/*.mk 2>/dev/null | head -5
+
+      - name: Build TWRP
         run: |
           cd ~/twrp
           source build/envsetup.sh
@@ -69,7 +84,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: twrp-tb375fc
+          name: twrp-tb375fc-14
           path: |
             ~/twrp/out/target/product/tb375fc/vendor_boot.img
             ~/twrp/out/target/product/tb375fc/recovery.img
