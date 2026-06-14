@@ -52,8 +52,6 @@ jobs:
             <project path="build/release" name="platform/build/release" remote="aosp_remote" revision="refs/tags/android-14.0.0_r67" clone-depth="1" />
           </manifest>
           EOF
-          echo "Local manifest added:"
-          cat .repo/local_manifests/build_release.xml
 
       - name: Sync TWRP source
         run: |
@@ -66,19 +64,26 @@ jobs:
           cp -r $GITHUB_WORKSPACE/device_tree/* ~/twrp/$DEVICE_PATH/
           rm -rf ~/twrp/$DEVICE_PATH/.github 2>/dev/null || true
 
-      - name: Verify build/release
+      - name: Check available releases
         run: |
-          echo "=== build/release ==="
-          ls -la ~/twrp/build/release/ | head -10
+          cd ~/twrp
+          echo "=== build/release dirs ==="
+          ls -d build/release/*/ 2>/dev/null | head -20
           echo ""
-          echo "=== release config mk files ==="
-          ls ~/twrp/build/release/*.mk 2>/dev/null | head -5
+          echo "=== Available releases ==="
+          ls build/release/ 2>/dev/null
 
       - name: Build TWRP
         run: |
           cd ~/twrp
           source build/envsetup.sh
-          lunch twrp_tb375fc-eng
+          # Try 3-part lunch format with ap3a first
+          echo "=== Trying lunch twrp_tb375fc-ap3a-eng ==="
+          lunch twrp_tb375fc-ap3a-eng 2>&1 && echo "SUCCESS" || echo "FAILED"
+          if [ $? -ne 0 ]; then
+            echo "=== Trying lunch twrp_tb375fc-ap1a-eng ==="
+            lunch twrp_tb375fc-ap1a-eng 2>&1
+          fi
           mka vendorbootimage -j2 2>&1
 
       - name: Upload artifacts
