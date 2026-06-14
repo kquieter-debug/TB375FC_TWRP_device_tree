@@ -1,4 +1,4 @@
-﻿name: Build TWRP14
+name: Build TWRP14
 on:
   workflow_dispatch:
 
@@ -96,7 +96,7 @@ jobs:
           ccache -M 5G
           cd ~/twrp
           source build/envsetup.sh
-          lunch twrp_tb375fc-eng
+          lunch twrp_tb375fc-ap2a-eng
           mka vendorbootimage -j2 2>&1
 
       - name: Upload artifacts
@@ -107,3 +107,4 @@ jobs:
             ~/twrp/out/target/product/tb375fc/vendor_boot.img
             ~/twrp/out/target/product/tb375fc/recovery.img
           if-no-files-found: warn
+
