@@ -5,7 +5,7 @@ on:
 env:
   DEVICE_PATH: device/lenovo/tb375fc
   TWRP_MANIFEST: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
-  TWRP_BRANCH: twrp-12.1
+  TWRP_BRANCH: twrp-14.1
   CCACHE_DIR: /home/runner/.ccache
   USE_CCACHE: 1
 
@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p ~/twrp
           cd ~/twrp
-          repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1
+          repo init -u $TWRP_MANIFEST -b $TWRP_BRANCH --depth=1 -c --no-tags
           # Remove large prebuilts to save space (same as before)
           python3 << 'PYEOF'
           import xml.etree.ElementTree as ET, os
